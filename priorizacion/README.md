@@ -59,13 +59,14 @@ priorizacion/
 
 ### Dónde vive la base de datos
 
-El **esquema SQL** (tablas, índices, vista, y la carga inicial de la matriz activa) **no está dentro de este proyecto** — es un archivo aparte que se ejecuta manualmente contra PostgreSQL:
+El **esquema SQL** y la **matriz de priorización** **no están dentro de este proyecto** — son dos archivos en la raíz del repositorio que se ejecutan manualmente contra PostgreSQL:
 
 ```
-mpo.sql
+mpo.sql                                 Esquema: tablas, índices y vista (siro_*, mspo_*)
+scripts/matriz-mantenimiento-2026.sql   Matriz activa: Calificación 30%, Normativa 20%, Cercanía 30%, Solicitudes 20%
 ```
 
-Ese script crea las 9 tablas + 1 vista (`siro_*`, `mspo_*`) y, al final, inserta una matriz activa de ejemplo (pesos: Calificación 30%, Cercanía 15%, Amenazas 25%, Afectación 15%, Demanda 10%, Antigüedad 5%). para que la plataforma funcione correctamente apartir de esa matriz de ejemplo, Ver la sección 3 para cómo correrlo.
+La matriz sale de `Matriz de priorización Mtto - Formulado 1.xlsx` y del Diccionario de datos V1. Ver la sección 3 para cómo correrlos.
 
 ---
 
@@ -107,15 +108,16 @@ Manualmente, con `psql`, pgAdmin o el cliente que prefieras:
 CREATE DATABASE mpo;
 ```
 
-**3. Cargar el esquema + configuración inicial**
+**3. Cargar el esquema y la matriz**
 
-Corre el script independiente (crea tablas, vista, y la matriz activa de ejemplo):
+Corre los dos scripts, en este orden:
 ```bash
 psql -h localhost -U postgres -d mpo -f "mpo.sql"
+psql -h localhost -U postgres -d mpo -f "scripts/matriz-mantenimiento-2026.sql"
 ```
-O pega su contenido en el editor SQL de pgAdmin y ejecútalo. solo debe correrse **una vez** — si la corres dos veces sobre una base que ya tiene una matriz activa, va a fallar por la restricción de "una sola matriz activa" (es intencional).
+O pega su contenido en el editor SQL de pgAdmin y ejecútalo. Ambos se pueden correr más de una vez sin efectos.
 
-> Los pesos que trae el script son de **ejemplo**. Edítalos directamente en `mpo.sql` (sección `BLOQUE 4`) con los valores reales de tu matriz institucional antes de usar la app en serio.
+> Para cambiar pesos o puntajes no edites una matriz ya usada: la bitácora la referencia. Crea una matriz nueva y actívala, como hace `scripts/matriz-mantenimiento-2026.sql`.
 
 **4. Configurar `.env`**
 

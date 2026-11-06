@@ -137,8 +137,8 @@ CREATE INDEX IF NOT EXISTS idx_mspo_variables_grupo
 
 
 -- Catálogo de valores de entrada por variable y su puntaje asignado.
--- Ejemplo: variable "AMENAZA INUNDACIONES" → valores {"Alta": 100, "Media": 50,
--- "Baja": 30, "Sin Información": 0}. El motor matchea valor_entrada exacta
+-- Ejemplo: variable "AMENAZA INUNDACIONES" → valores {"Alta": 25, "Media": 50,
+-- "Baja": 100, "Sin Información": 100}. El motor matchea valor_entrada exacta
 -- (case-sensitive) excepto para "CATEGORIA EQUIPAMIENTO" donde usa includes().
 CREATE TABLE IF NOT EXISTS mspo_valores_variables (
     id_valor          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -215,81 +215,10 @@ CREATE INDEX IF NOT EXISTS idx_mspo_detalle_resultado
 
 
 -- -----------------------------------------------------------------------------
--- BLOQUE 4 — Configuración inicial: matriz activa (grupos, variables, valores)
+-- BLOQUE 4 — Matriz activa
 -- -----------------------------------------------------------------------------
--- Sin esto la aplicación no puede calcular nada: /api/mspo/matrix/active
--- devuelve "No hay matriz activa configurada" si mspo_matrices está vacía.
+-- Este archivo solo crea la estructura. Sin una matriz activa la aplicación no
+-- puede calcular nada (/api/mspo/matrix/active responde "No hay matriz activa
+-- configurada"), así que después de este script hay que ejecutar:
 --
--- IMPORTANTE — estos son valores de EJEMPLO (pesos de grupo: Calificación 30%,
--- Cercanía 15%, Amenazas 25%, Afectación 15%, Demanda 10%, Antigüedad 5% =
--- 100%). Edítalos con los pesos y valores reales de tu matriz institucional
--- antes de usar la app en serio — solo cambia los números/textos de los
--- INSERT de abajo, la estructura no necesita tocarse.
---
--- Este bloque asume que las tablas mspo_* están vacías (primera carga). Si
--- corres el script completo dos veces vas a chocar con la restricción de
--- "una sola matriz activa" (ux_mspo_matrices_una_activa) — es intencional,
--- para no dejar dos matrices activas por accidente.
-
-INSERT INTO mspo_matrices (nombre_matriz, esta_activa, descripcion)
-VALUES ('Matriz Institucional 2026', 1, 'Configuración activa');
-
--- id_matriz = 1 (primera fila insertada)
-
-INSERT INTO mspo_grupos_priorizacion (id_matriz, nombre_grupo, peso_grupo, orden) VALUES
-(1, 'Calificación de la infraestructura', '30', 1),
-(1, 'Cercanía con equipamientos', '15', 2),
-(1, 'Amenazas y riesgos', '25', 3),
-(1, 'Afectación urbanística', '15', 4),
-(1, 'Demanda ciudadana', '10', 5),
-(1, 'Antigüedad', '5', 6);
-
--- Grupo 1 "Calificación de la infraestructura" no usa variables (toma
--- CALIFICACION MATRIZ directo, ver lib/services/prioritization.js).
-
--- Grupo 2: Cercanía con equipamientos
-INSERT INTO mspo_variables_priorizacion (id_grupo, nombre_variable, peso_variable) VALUES
-(2, 'CATEGORIA EQUIPAMIENTO', '100');
-
-INSERT INTO mspo_valores_variables (id_variable, valor_entrada, puntaje_asignado) VALUES
-(1, 'Salud', '100'),
-(1, 'Educación', '80'),
-(1, 'Recreación', '60'),
-(1, 'Sin Información', '0');
-
--- Grupo 3: Amenazas y riesgos
-INSERT INTO mspo_variables_priorizacion (id_grupo, nombre_variable, peso_variable) VALUES
-(3, 'AMENAZA AVENIDAS TORRENCIALES', '34'),
-(3, 'AMENAZA INUNDACIONES', '33'),
-(3, 'AMENAZA MOVIMIENTO EN MASA', '33');
-
-INSERT INTO mspo_valores_variables (id_variable, valor_entrada, puntaje_asignado)
-SELECT id_variable, v.valor_entrada, v.puntaje_asignado
-FROM mspo_variables_priorizacion,
-     (SELECT 'Alta' AS valor_entrada, '100' AS puntaje_asignado
-      UNION ALL SELECT 'Media', '50'
-      UNION ALL SELECT 'Baja', '30'
-      UNION ALL SELECT 'Sin Información', '0') v
-WHERE nombre_variable IN ('AMENAZA AVENIDAS TORRENCIALES', 'AMENAZA INUNDACIONES', 'AMENAZA MOVIMIENTO EN MASA');
-
--- Grupo 4: Afectación urbanística
-INSERT INTO mspo_variables_priorizacion (id_grupo, nombre_variable, peso_variable) VALUES
-(4, 'RETIROS DE QUEBRADA', '34'),
-(4, 'PROYECTOS VIALES', '33'),
-(4, 'ESPACIO PUBLICO PROYECTADO', '33');
-
-INSERT INTO mspo_valores_variables (id_variable, valor_entrada, puntaje_asignado)
-SELECT id_variable, v.valor_entrada, v.puntaje_asignado
-FROM mspo_variables_priorizacion,
-     (SELECT 'SI' AS valor_entrada, '100' AS puntaje_asignado
-      UNION ALL SELECT 'NO', '30'
-      UNION ALL SELECT 'Sin Información', '0') v
-WHERE nombre_variable IN ('RETIROS DE QUEBRADA', 'PROYECTOS VIALES', 'ESPACIO PUBLICO PROYECTADO');
-
--- Grupo 5: Demanda ciudadana (regla especial por umbrales, no requiere valores)
-INSERT INTO mspo_variables_priorizacion (id_grupo, nombre_variable, peso_variable) VALUES
-(5, 'CANTIDAD SOLICITUDES RELACIONADAS', '100');
-
--- Grupo 6: Antigüedad (regla especial por años transcurridos, no requiere valores)
-INSERT INTO mspo_variables_priorizacion (id_grupo, nombre_variable, peso_variable) VALUES
-(6, 'FECHA', '100');
+--     scripts/matriz-mantenimiento-2026.sql
